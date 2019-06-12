@@ -2,6 +2,7 @@ package DBproj
 
 import (
 	"encoding/base64"
+	"fmt"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/scrypt"
 )
@@ -27,7 +28,7 @@ func NewAccess(db *gorm.DB) *Access {
 
 type IAccesser interface {
 	CreateUser(usr User)
-	GetUser()
+	GetUser(usr User) User
 	CreateTask()
 	GetTask()
 }
@@ -35,11 +36,27 @@ type IAccesser interface {
 func (a *Access) CreateUser(usr User) {
 
 	usr.Password, _ = hashPassword(usr.Password)
-	a.db.Create(&usr)
+	err := a.db.Create(&usr)
+	if err.Error != nil {
+		fmt.Println("email already registered")
+	}
 
+	// check email redundacy
 }
 
-func (a *Access) GetUser() {
+func (a *Access) GetUser(usr User) User {
+	usr.Password, _ = hashPassword(usr.Password)
+
+	var query User
+
+	err := a.db.Where("email = ? AND password = ?", usr.Email, usr.Password).Find(&query).Error
+
+	if err != nil {
+		fmt.Println("Invalid user/password!")
+	}
+
+	return query
+
 	//READ FROM DB
 }
 

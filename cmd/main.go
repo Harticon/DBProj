@@ -1,7 +1,7 @@
 package main
 
 import (
-	"DBproj"
+	"github.com/Harticon/DBproj"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/labstack/echo"
@@ -27,6 +27,8 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+
+	//e.Use(middleware.JWT([]byte("secret")))
 
 	ug := e.Group("/auth")
 	ug.POST("/signup", service.SignUp)

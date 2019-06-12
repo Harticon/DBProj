@@ -2,6 +2,9 @@ package DBproj
 
 import (
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
+	"time"
+
 	"github.com/labstack/echo"
 	"net/http"
 	"regexp"
@@ -31,31 +34,50 @@ func (s *Service) SignUp(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	fmt.Println(usr)
-
-	//Valid email
+	//Validate email
 	if !validateEmail(usr.Email) {
 		fmt.Println("email not valid")
 		return err
 	}
-
-	//Hash password
-
-	//h := sha256.Sum256([]byte(usr.Password))
-	//usr.Password = string(h[:])
 
 	s.access.CreateUser(usr)
 	return nil
 }
 
 func (s *Service) SignIn(ctx echo.Context) error {
-	//Validate login
-	//Validate passowrd
+
 	//return login token
 
-	s.access.GetUser()
+	var usr User
 
-	return nil
+	err := ctx.Bind(&usr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
+	query := s.access.GetUser(usr)
+	if query == (User{}) {
+		return ctx.JSON(http.StatusBadRequest, "user does not exists")
+	}
+
+	//create token
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["email"] = usr.Email
+	claims["id"] = usr.ID
+	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+
+	t, err := token.SignedString([]byte("secret"))
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{
+		"token": t,
+	})
 }
 
 func (s *Service) SetTask(ctx echo.Context) error {

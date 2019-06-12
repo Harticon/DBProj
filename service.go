@@ -66,8 +66,8 @@ func (s *Service) SignIn(ctx echo.Context) error {
 
 	claims := token.Claims.(jwt.MapClaims)
 
-	claims["email"] = usr.Email
-	claims["id"] = usr.ID
+	claims["email"] = query.Email
+	claims["id"] = query.ID
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
 	t, err := token.SignedString([]byte("secret"))
@@ -82,8 +82,28 @@ func (s *Service) SignIn(ctx echo.Context) error {
 
 func (s *Service) SetTask(ctx echo.Context) error {
 
-	//Get timestamp
-	s.access.CreateTask()
+	t := ctx.Request().Header.Get("Authorization")
+	token, err := jwt.Parse(t, func(token *jwt.Token) (interface{}, error) {
+		return []byte("secret"), nil
+	})
+	if err != nil {
+		fmt.Println("not valid token")
+		return ctx.JSON(http.StatusUnauthorized, err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if claims.Valid() != nil || !ok {
+		fmt.Println("not valid claims")
+		return ctx.JSON(http.StatusUnauthorized, "user does not exists")
+	}
+
+	var tsk Task
+
+	tsk.Name = "Jmeno tasku"
+	tsk.UserId = int(claims["id"].(float64))
+	tsk.ExecuteAt = "Zitra"
+
+	s.access.CreateTask(tsk)
 
 	return nil
 }

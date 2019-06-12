@@ -29,7 +29,7 @@ func NewAccess(db *gorm.DB) *Access {
 type IAccesser interface {
 	CreateUser(usr User)
 	GetUser(usr User) User
-	CreateTask()
+	CreateTask(tsk Task)
 	GetTask()
 }
 
@@ -60,8 +60,13 @@ func (a *Access) GetUser(usr User) User {
 	//READ FROM DB
 }
 
-func (a *Access) CreateTask() {
-	//WRITE to DB
+func (a *Access) CreateTask(tsk Task) {
+
+	err := a.db.Create(&tsk).Error
+	if err != nil {
+		fmt.Println("Couldnt write task to db")
+	}
+
 }
 
 func (a *Access) GetTask() {

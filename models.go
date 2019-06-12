@@ -1,7 +1,9 @@
 package DBproj
 
+import "github.com/jinzhu/gorm"
+
 type User struct {
-	ID        int    `gorm:"AUTO_INCREMENT"`
+	gorm.Model
 	Firstname string `json:"firstname"`
 	Lastname  string `json:"lastname"`
 	Email     string `json:"email" gorm:"unique_index;not null"`
@@ -9,6 +11,7 @@ type User struct {
 }
 
 type Task struct {
+	gorm.Model
 	UserId    int
 	Name      string `json:"name"`
 	ExecuteAt string `json:"executeAt"`

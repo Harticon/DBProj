@@ -28,8 +28,6 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	//e.Use(middleware.JWT([]byte("secret")))
-
 	ug := e.Group("/auth")
 	ug.POST("/signup", service.SignUp)
 	ug.POST("/login", service.SignIn)

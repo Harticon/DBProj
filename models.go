@@ -14,5 +14,5 @@ type Task struct {
 	gorm.Model
 	UserId    int
 	Name      string `json:"name"`
-	ExecuteAt string `json:"executeAt"`
+	ExecuteAt int    `json:"executeAt"`
 }

@@ -82,30 +82,19 @@ func (s *Service) SignIn(ctx echo.Context) error {
 
 func (s *Service) SetTask(ctx echo.Context) error {
 
-	t := ctx.Request().Header.Get("Authorization")
-	token, err := jwt.Parse(t, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil
-	})
-	if err != nil {
-		fmt.Println("not valid token")
-		return ctx.JSON(http.StatusUnauthorized, err)
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if claims.Valid() != nil || !ok {
-		fmt.Println("not valid claims")
-		return ctx.JSON(http.StatusUnauthorized, "user does not exists")
-	}
-
 	var tsk Task
 
-	tsk.Name = "Jmeno tasku"
-	tsk.UserId = int(claims["id"].(float64))
-	tsk.ExecuteAt = "Zitra"
+	err := ctx.Bind(&tsk)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
+	tsk.UserId = ctx.Get("id").(int)
 
 	s.access.CreateTask(tsk)
 
 	return nil
+
 }
 
 func (s *Service) GetTaskByUserId(ctx echo.Context) error {

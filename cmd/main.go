@@ -33,6 +33,7 @@ func main() {
 	ug.POST("/login", service.SignIn)
 
 	tg := e.Group("/task")
+	tg.Use(DBproj.UserMiddleware)
 	tg.POST("/create", service.SetTask)
 	tg.GET("/get", service.GetTaskByUserId)
 

@@ -94,13 +94,19 @@ func (s *Service) SetTask(ctx echo.Context) error {
 	s.access.CreateTask(tsk)
 
 	return nil
-
 }
 
 func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 
-	//Validate taskID
-	s.access.GetTask()
+	query := s.access.GetTask(ctx.Get("id").(int))
 
-	return nil
+	//var results[] Task
+	//for _,v := range query{
+	//	results = append(results, Task{
+	//		Name:v.Name,
+	//		ExecuteAt:v.ExecuteAt,
+	//	})
+	//}
+
+	return ctx.JSON(http.StatusOK, query)
 }

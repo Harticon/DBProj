@@ -30,7 +30,7 @@ type IAccesser interface {
 	CreateUser(usr User)
 	GetUser(usr User) User
 	CreateTask(tsk Task)
-	GetTask(userId int) []Task
+	GetTask(userId, f, t int) []Task
 }
 
 func (a *Access) CreateUser(usr User) {
@@ -69,13 +69,15 @@ func (a *Access) CreateTask(tsk Task) {
 
 }
 
-func (a *Access) GetTask(userId int) []Task {
+func (a *Access) GetTask(userId, f, t int) []Task {
 
 	var query []Task
-	err := a.db.Where("user_id = ?", userId).Find(&query).Error
-	if err != nil {
-		fmt.Println("You dont have any tasks yet")
-	}
+	fmt.Printf("%v %v", f, t)
+	err := a.db.Where("user_id = ? AND execute_at <= ? AND execute_at >= ?", userId, t, f).Find(&query).Error
 
+	if err != nil {
+		fmt.Println("couldnt read from db")
+		return []Task{}
+	}
 	return query
 }

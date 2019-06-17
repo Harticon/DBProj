@@ -15,7 +15,7 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return []byte("secret"), nil
 		})
 		if err != nil {
-			fmt.Println("not valid token")
+			fmt.Println("You are not logged in")
 			return ctx.JSON(http.StatusUnauthorized, err)
 		}
 

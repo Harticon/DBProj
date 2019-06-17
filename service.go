@@ -3,6 +3,7 @@ package DBproj
 import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo"
@@ -98,7 +99,22 @@ func (s *Service) SetTask(ctx echo.Context) error {
 
 func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 
-	query := s.access.GetTask(ctx.Get("id").(int))
+	from := ctx.QueryParam("from")
+	to := ctx.QueryParam("to")
+
+	f, ok := strconv.Atoi(from)
+	if ok != nil {
+		fmt.Printf("Nebylo zadano cislo")
+		return ok
+	}
+
+	t, ok := strconv.Atoi(to)
+	if ok != nil {
+		fmt.Printf("Nebylo zadano cislo")
+		return ok
+	}
+
+	result := s.access.GetTask(ctx.Get("id").(int), f, t)
 
 	//var results[] Task
 	//for _,v := range query{
@@ -108,5 +124,5 @@ func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 	//	})
 	//}
 
-	return ctx.JSON(http.StatusOK, query)
+	return ctx.JSON(http.StatusOK, result)
 }

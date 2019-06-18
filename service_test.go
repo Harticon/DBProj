@@ -32,13 +32,22 @@ func (s *serviceSuite) SetupSuite() {
 		panic(err)
 	}
 
-	db.AutoMigrate(&User{})
-	db.AutoMigrate(&Task{})
+	db.AutoMigrate(&User{}, &Task{})
 
 	access := NewAccess(db)
 	s.service = NewService(access)
 	s.echo = echo.New()
 	s.db = db
+
+	user := &User{
+		Firstname: "vojta",
+		Lastname:  "hromadka",
+		Email:     "hromadkavojta@gmail.com",
+		Password:  "DfZmTUg5mGgzQATsDXlLv5c2gH9+kuNvjIaq9MyuxkU=",
+	}
+
+	err = s.db.Create(&user).Error
+	s.Nil(err)
 
 }
 
@@ -46,11 +55,16 @@ func (s *serviceSuite) SetupTest() {
 
 }
 
-func (s *serviceSuite) TearDownSuite() {
+func (s *serviceSuite) TearDownTest() {
 
 }
 
-func (s *serviceSuite) TearDownTest() {
+func (s *serviceSuite) TearDownSuite() {
+
+	s.db.DropTable(&User{})
+	s.db.DropTable(&Task{})
+	err := s.db.Close()
+	s.Nil(err)
 
 }
 
@@ -86,7 +100,6 @@ func TestApiSuite(t *testing.T) {
 }
 
 func (s *serviceSuite) TestSignUp() {
-
 	candidates := []struct {
 		User         *User
 		expectedCode int
@@ -96,7 +109,7 @@ func (s *serviceSuite) TestSignUp() {
 			User: &User{
 				Firstname: "vojta",
 				Lastname:  "hromadka",
-				Email:     "hromadkavojta@gmail.com",
+				Email:     "lolololololol@gmail.com",
 				Password:  "vojta",
 			},
 			expectedCode: http.StatusCreated,
@@ -132,6 +145,7 @@ func (s *serviceSuite) TestSignUp() {
 func (s *serviceSuite) TestSignIn() {
 	candidates := []struct {
 		User         *User
+		Token        string
 		expectedCode int
 		expectedErr  error
 	}{
@@ -146,7 +160,7 @@ func (s *serviceSuite) TestSignIn() {
 		{
 			User: &User{
 				Email:    "non_existing_user",
-				Password: "heslo",
+				Password: "pass",
 			},
 			expectedCode: http.StatusBadRequest,
 			expectedErr:  nil,
@@ -156,6 +170,7 @@ func (s *serviceSuite) TestSignIn() {
 	for i, candidate := range candidates {
 
 		body, err := json.Marshal(&candidate.User)
+		s.NoError(err)
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(string(body)))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -164,11 +179,8 @@ func (s *serviceSuite) TestSignIn() {
 
 		err = s.service.SignIn(c)
 		s.NoError(err)
-		s.Equalf(candidate.expectedCode, rec.Code, "\n candidate: %d\n", i+1)
 
-		if rec.Body.String() == "nil" {
-			s.Error(err, "token not recieved")
-		}
+		s.Equalf(candidate.expectedCode, rec.Code, "\n candidate: %d\n", i+1)
 
 	}
 
@@ -191,7 +203,7 @@ func (s *serviceSuite) TestSetTask() {
 		},
 		{
 			Task: &Task{
-				Name:      "ahoj",
+				Name:      "task32",
 				ExecuteAt: 12,
 			},
 			expectedCode: http.StatusCreated,

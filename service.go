@@ -1,9 +1,11 @@
 package DBproj
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/scrypt"
 	"strconv"
 	"time"
 
@@ -46,8 +48,17 @@ func (s *Service) SignUp(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
+	usr.Password, err = hashPassword(usr.Password)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
 	err = s.access.CreateUser(usr)
-	return ctx.JSON(http.StatusCreated, err)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, nil)
 }
 
 func (s *Service) SignIn(ctx echo.Context) error {
@@ -61,9 +72,15 @@ func (s *Service) SignIn(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	query := s.access.GetUser(usr)
-	if query == (User{}) {
-		return ctx.JSON(http.StatusBadRequest, errors.New("user does not exists"))
+	usr.Password, err = hashPassword(usr.Password)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
+	query, err := s.access.GetUser(usr)
+	if err != nil {
+		//fmt.Println("error: ", err)
+		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
 
 	//create token
@@ -95,9 +112,17 @@ func (s *Service) SetTask(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	tsk.UserId = ctx.Get("id").(int)
+	var ok bool
+	tsk.UserId, ok = ctx.Get("id").(int)
+	if !ok {
+		return ctx.JSON(http.StatusUnauthorized, err)
+	}
 
-	s.access.CreateTask(tsk)
+	err = s.access.CreateTask(tsk)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
 	return ctx.JSON(http.StatusCreated, err)
 }
 
@@ -108,17 +133,27 @@ func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 
 	f, ok := strconv.Atoi(from)
 	if ok != nil {
-		fmt.Printf("Nebylo zadano cislo")
 		return ctx.JSON(http.StatusBadRequest, ok)
 	}
 
 	t, ok := strconv.Atoi(to)
 	if ok != nil {
-		fmt.Printf("Nebylo zadano cislo")
 		return ctx.JSON(http.StatusBadRequest, ok)
 	}
 
-	result := s.access.GetTask(ctx.Get("id").(int), f, t)
+	result, err := s.access.GetTask(ctx.Get("id").(int), f, t)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
 
 	return ctx.JSON(http.StatusOK, result)
+}
+
+func hashPassword(raw string) (string, error) {
+	dk, err := scrypt.Key([]byte(raw), []byte("salt&pepper"), 16384, 8, 1, 32)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(dk), nil
 }

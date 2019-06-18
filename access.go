@@ -1,20 +1,9 @@
 package DBproj
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"golang.org/x/crypto/scrypt"
 )
-
-func hashPassword(raw string) (string, error) {
-	dk, err := scrypt.Key([]byte(raw), []byte("salt&pepper"), 16384, 8, 1, 32)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(dk), nil
-}
 
 type Access struct {
 	db *gorm.DB
@@ -28,58 +17,45 @@ func NewAccess(db *gorm.DB) *Access {
 
 type IAccesser interface {
 	CreateUser(usr User) error
-	GetUser(usr User) User
-	CreateTask(tsk Task)
-	GetTask(userId, f, t int) []Task
+	GetUser(usr User) (User, error)
+	CreateTask(tsk Task) error
+	GetTask(userId, f, t int) ([]Task, error)
 }
 
 func (a *Access) CreateUser(usr User) error {
-
-	usr.Password, _ = hashPassword(usr.Password)
-	err := a.db.Create(&usr)
-	if err.Error != nil {
-		fmt.Println(err.Error)
-		return err.Error
+	err := a.db.Create(&usr).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
-	// check email redundacy
+	// check email redundancy
 	return nil
 }
 
-func (a *Access) GetUser(usr User) User {
-	usr.Password, _ = hashPassword(usr.Password)
-
+func (a *Access) GetUser(usr User) (User, error) {
 	var query User
 
 	err := a.db.Where("email = ? AND password = ?", usr.Email, usr.Password).Find(&query).Error
-
 	if err != nil {
-		fmt.Println("Invalid user/password!")
+		//fmt.Println("err:", err)
+		return User{}, err
 	}
 
-	return query
-
-	//READ FROM DB
+	return query, nil
 }
 
-func (a *Access) CreateTask(tsk Task) {
-
-	err := a.db.Create(&tsk).Error
-	if err != nil {
-		fmt.Println("Couldnt write task to db")
-	}
-
+func (a *Access) CreateTask(tsk Task) error {
+	return a.db.Create(&tsk).Error
 }
 
-func (a *Access) GetTask(userId, f, t int) []Task {
-
+func (a *Access) GetTask(userId, f, t int) ([]Task, error) {
 	var query []Task
-	fmt.Printf("%v %v", f, t)
 	err := a.db.Where("user_id = ? AND execute_at <= ? AND execute_at >= ?", userId, t, f).Find(&query).Error
-
 	if err != nil {
-		fmt.Println("couldnt read from db")
-		return []Task{}
+		fmt.Println("couldn't read from db")
+		return []Task{}, err
 	}
-	return query
+
+	return query, nil
 }

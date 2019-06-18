@@ -218,12 +218,9 @@ func (s *serviceSuite) TestSetTask() {
 		body, err := json.Marshal(&candidate.Task)
 		req := httptest.NewRequest(http.MethodPost, "/task/create", strings.NewReader(string(body)))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		//req.Header.Set(echo.HeaderAuthorization, token)
+
 		rec := httptest.NewRecorder()
 		ctx := s.echo.NewContext(req, rec)
-
-		// Assertions
-		//t := ctx.Request().Header.Get("Authorization")
 
 		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 			return []byte("secret"), nil

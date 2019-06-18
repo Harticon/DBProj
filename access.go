@@ -27,21 +27,23 @@ func NewAccess(db *gorm.DB) *Access {
 }
 
 type IAccesser interface {
-	CreateUser(usr User)
+	CreateUser(usr User) error
 	GetUser(usr User) User
 	CreateTask(tsk Task)
 	GetTask(userId, f, t int) []Task
 }
 
-func (a *Access) CreateUser(usr User) {
+func (a *Access) CreateUser(usr User) error {
 
 	usr.Password, _ = hashPassword(usr.Password)
 	err := a.db.Create(&usr)
 	if err.Error != nil {
-		fmt.Println("email already registered")
+		fmt.Println(err.Error)
+		return err.Error
 	}
 
 	// check email redundacy
+	return nil
 }
 
 func (a *Access) GetUser(usr User) User {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/Harticon/DBproj"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -11,7 +12,9 @@ import (
 
 func main() {
 
-	viper.SetDefault("db.conn", "test.db")
+	viper.SetDefault("db.conn", "prod.db")
+
+	fmt.Println(viper.GetString("db.conn"))
 
 	db, err := gorm.Open("sqlite3", viper.GetString("db.conn"))
 	if err != nil {

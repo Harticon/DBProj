@@ -1,6 +1,7 @@
 package DBproj
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"strconv"
@@ -35,14 +36,18 @@ func (s *Service) SignUp(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
+	if usr.Email == "" || usr.Password == "" {
+		return ctx.JSON(http.StatusBadRequest, errors.New("empty password and email"))
+	}
+
 	//Validate email
 	if !validateEmail(usr.Email) {
 		fmt.Println("email not valid")
-		return err
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	s.access.CreateUser(usr)
-	return nil
+	err = s.access.CreateUser(usr)
+	return ctx.JSON(http.StatusCreated, err)
 }
 
 func (s *Service) SignIn(ctx echo.Context) error {
@@ -58,7 +63,7 @@ func (s *Service) SignIn(ctx echo.Context) error {
 
 	query := s.access.GetUser(usr)
 	if query == (User{}) {
-		return ctx.JSON(http.StatusBadRequest, "user does not exists")
+		return ctx.JSON(http.StatusBadRequest, errors.New("user does not exists"))
 	}
 
 	//create token
@@ -73,10 +78,10 @@ func (s *Service) SignIn(ctx echo.Context) error {
 
 	t, err := token.SignedString([]byte("secret"))
 	if err != nil {
-		return err
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	return ctx.JSON(http.StatusOK, map[string]string{
+	return ctx.JSON(http.StatusAccepted, map[string]string{
 		"token": t,
 	})
 }
@@ -93,8 +98,7 @@ func (s *Service) SetTask(ctx echo.Context) error {
 	tsk.UserId = ctx.Get("id").(int)
 
 	s.access.CreateTask(tsk)
-
-	return nil
+	return ctx.JSON(http.StatusCreated, err)
 }
 
 func (s *Service) GetTaskByUserId(ctx echo.Context) error {
@@ -105,24 +109,16 @@ func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 	f, ok := strconv.Atoi(from)
 	if ok != nil {
 		fmt.Printf("Nebylo zadano cislo")
-		return ok
+		return ctx.JSON(http.StatusBadRequest, ok)
 	}
 
 	t, ok := strconv.Atoi(to)
 	if ok != nil {
 		fmt.Printf("Nebylo zadano cislo")
-		return ok
+		return ctx.JSON(http.StatusBadRequest, ok)
 	}
 
 	result := s.access.GetTask(ctx.Get("id").(int), f, t)
-
-	//var results[] Task
-	//for _,v := range query{
-	//	results = append(results, Task{
-	//		Name:v.Name,
-	//		ExecuteAt:v.ExecuteAt,
-	//	})
-	//}
 
 	return ctx.JSON(http.StatusOK, result)
 }

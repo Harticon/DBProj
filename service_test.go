@@ -2,7 +2,6 @@ package DBproj
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -51,6 +51,31 @@ func (s *serviceSuite) TearDownSuite() {
 }
 
 func (s *serviceSuite) TearDownTest() {
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+func (s *serviceSuite) getToken() string {
+	user := &User{
+		Email:    "hromadkavojta@gmail.com",
+		Password: "vojta",
+	}
+
+	body, _ := json.Marshal(&user)
+	reqs := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(string(body)))
+	reqs.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	recs := httptest.NewRecorder()
+	c := s.echo.NewContext(reqs, recs)
+
+	err := s.service.SignIn(c)
+	s.Nil(err)
+
+	var t Token
+
+	err = json.Unmarshal(recs.Body.Bytes(), &t)
+	s.Nil(err)
+
+	return t.Token
 
 }
 
@@ -140,8 +165,7 @@ func (s *serviceSuite) TestSignIn() {
 		err = s.service.SignIn(c)
 		s.NoError(err)
 		s.Equalf(candidate.expectedCode, rec.Code, "\n candidate: %d\n", i+1)
-		s.Require()
-		fmt.Println(rec.Body.String())
+
 		if rec.Body.String() == "nil" {
 			s.Error(err, "token not recieved")
 		}
@@ -151,12 +175,6 @@ func (s *serviceSuite) TestSignIn() {
 }
 
 func (s *serviceSuite) TestSetTask() {
-	//TODO change TestSetTask ??
-
-	user := &User{
-		Email:    "hromadkavojta@gmail.com",
-		Password: "vojta",
-	}
 
 	candidates := []struct {
 		Task         *Task
@@ -168,7 +186,7 @@ func (s *serviceSuite) TestSetTask() {
 				Name:      "task1",
 				ExecuteAt: 178,
 			},
-			expectedCode: http.StatusAccepted,
+			expectedCode: http.StatusCreated,
 			expectedErr:  nil,
 		},
 		{
@@ -176,49 +194,101 @@ func (s *serviceSuite) TestSetTask() {
 				Name:      "ahoj",
 				ExecuteAt: 12,
 			},
-			expectedCode: http.StatusBadRequest,
+			expectedCode: http.StatusCreated,
 			expectedErr:  nil,
 		},
 	}
 
-	body, _ := json.Marshal(&user)
-	reqs := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(string(body)))
-	reqs.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	recs := httptest.NewRecorder()
-	c := s.echo.NewContext(reqs, recs)
-
-	t := c.Request().Header.Get("Authorization")
-
-	token, _ := jwt.Parse(t, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil
-	})
-	claims, _ := token.Claims.(jwt.MapClaims)
-	c.Set("id", int(claims["id"].(float64)))
-
-	fmt.Println()
+	token := s.getToken()
 
 	for i, candidate := range candidates {
 
-		candidate.Task.UserId = int(claims["id"].(float64))
 		body, err := json.Marshal(&candidate.Task)
 		req := httptest.NewRequest(http.MethodPost, "/task/create", strings.NewReader(string(body)))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-
+		//req.Header.Set(echo.HeaderAuthorization, token)
 		rec := httptest.NewRecorder()
 		ctx := s.echo.NewContext(req, rec)
 
 		// Assertions
+		//t := ctx.Request().Header.Get("Authorization")
+
+		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+			return []byte("secret"), nil
+		})
+		s.Nil(err)
+
+		claims, _ := t.Claims.(jwt.MapClaims)
+		ctx.Set("id", int(claims["id"].(float64)))
 
 		err = s.service.SetTask(ctx)
-
-		s.NoError(err)
+		s.Nil(err)
 		s.Equalf(candidate.expectedCode, rec.Code, "\n candidate: %d\n", i+1)
-		s.Require()
 
 	}
 
 }
 
 func (s *serviceSuite) TestGetTaskByUserId() {
+
+	candidates := []struct {
+		params       []string
+		paramsVal    []string
+		expectedCode int
+		expectedErr  error
+	}{
+		{
+			params:       []string{"from", "to"},
+			paramsVal:    []string{"0", "250"},
+			expectedCode: http.StatusOK,
+			expectedErr:  nil,
+		},
+		{
+			params:       []string{"from", "to"},
+			paramsVal:    []string{"0aw", "250"},
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  nil,
+		},
+		{
+			params:       []string{"from", "to"},
+			paramsVal:    []string{"0", "0"},
+			expectedCode: http.StatusOK,
+			expectedErr:  nil,
+		},
+		{
+			params:       []string{"fromneco", "to"},
+			paramsVal:    []string{"0", "250"},
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  nil,
+		},
+	}
+
+	token := s.getToken()
+
+	for i, candidate := range candidates {
+
+		f := make(url.Values)
+		f.Set(candidate.params[0], candidate.paramsVal[0])
+		f.Set(candidate.params[1], candidate.paramsVal[1])
+
+		req := httptest.NewRequest(http.MethodGet, "/?"+f.Encode(), nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+		req.Header.Set(echo.HeaderAuthorization, token)
+		rec := httptest.NewRecorder()
+		ctx := s.echo.NewContext(req, rec)
+
+		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+			return []byte("secret"), nil
+		})
+		s.Nil(err)
+
+		claims, _ := t.Claims.(jwt.MapClaims)
+		ctx.Set("id", int(claims["id"].(float64)))
+
+		err = s.service.GetTaskByUserId(ctx)
+		s.Nil(err)
+		s.Equalf(candidate.expectedCode, rec.Code, "\n candidate: %d\n", i+1)
+
+	}
 
 }

@@ -81,8 +81,8 @@ func (s *Service) SignIn(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	return ctx.JSON(http.StatusAccepted, map[string]string{
-		"token": t,
+	return ctx.JSON(http.StatusAccepted, Token{
+		Token: t,
 	})
 }
 

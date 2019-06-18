@@ -16,3 +16,7 @@ type Task struct {
 	Name      string `json:"name"`
 	ExecuteAt int    `json:"executeAt"`
 }
+
+type Token struct {
+	Token string `json:"token"`
+}

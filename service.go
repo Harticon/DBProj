@@ -77,7 +77,7 @@ func (s *Service) SignIn(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	query, err := s.access.GetUser(usr)
+	query, err := s.access.GetUser(usr.Email, usr.Password)
 	if err != nil {
 		fmt.Println("error: ", err)
 		return ctx.JSON(http.StatusBadRequest, err.Error())

@@ -58,7 +58,7 @@ type IMockAccesser interface {
 
 func (a *AccessMock) CreateUser(usr User) (User, error) {
 
-	a.userDb[3] = User{Email: usr.Email,
+	a.userDb[2] = User{Email: usr.Email,
 		Lastname:  usr.Lastname,
 		Firstname: usr.Firstname,
 		Password:  usr.Password}
@@ -77,8 +77,22 @@ func (a *AccessMock) GetUser(email, password string) (User, error) {
 
 func (a *AccessMock) CreateTask(tsk Task) (Task, error) {
 
+	a.taskDb[3] = Task{
+		ExecuteAt: tsk.ExecuteAt,
+		UserId:    tsk.UserId,
+		Name:      tsk.Name,
+	}
+	return tsk, nil
 }
 
 func (a *AccessMock) GetTask(userId, f, t int) ([]Task, error) {
+	var tasks []Task
+
+	for _, v := range a.taskDb {
+		if userId == v.UserId && f <= v.ExecuteAt && t >= v.ExecuteAt {
+			tasks = append(tasks, v)
+		}
+	}
+	return tasks, nil
 
 }

@@ -3,16 +3,26 @@ package main
 import (
 	"fmt"
 	"github.com/Harticon/DBproj"
+	"github.com/asaskevich/govalidator"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/pkg/profile"
 	"github.com/spf13/viper"
 )
 
 func main() {
 
+	// todo cli add something that's gonna print
+
+	govalidator.SetFieldsRequiredByDefault(true)
+
+	defer profile.Start().Stop()
+
 	viper.SetDefault("db.conn", "prod.db")
+	viper.SetDefault("secret", "secret")
+	viper.SetDefault("hashSecret", "salt&peper")
 
 	fmt.Println(viper.GetString("db.conn"))
 
@@ -21,8 +31,7 @@ func main() {
 		panic("failed to connect to database	")
 	}
 
-	db.AutoMigrate(&DBproj.User{})
-	db.AutoMigrate(&DBproj.Task{})
+	db.AutoMigrate(&DBproj.User{}, &DBproj.Task{})
 
 	access := DBproj.NewAccess(db)
 	service := DBproj.NewService(access)

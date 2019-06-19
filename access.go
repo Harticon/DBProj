@@ -16,21 +16,21 @@ func NewAccess(db *gorm.DB) *Access {
 }
 
 type IAccesser interface {
-	CreateUser(usr User) error
+	CreateUser(usr User) (User, error)
 	GetUser(usr User) (User, error)
-	CreateTask(tsk Task) error
+	CreateTask(tsk Task) (Task, error)
 	GetTask(userId, f, t int) ([]Task, error)
 }
 
-func (a *Access) CreateUser(usr User) error {
+func (a *Access) CreateUser(usr User) (User, error) {
+
 	err := a.db.Create(&usr).Error
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return User{}, err
 	}
 
-	// check email redundancy
-	return nil
+	return usr, nil
 }
 
 func (a *Access) GetUser(usr User) (User, error) {
@@ -41,12 +41,17 @@ func (a *Access) GetUser(usr User) (User, error) {
 		//fmt.Println("err:", err)
 		return User{}, err
 	}
-
 	return query, nil
 }
 
-func (a *Access) CreateTask(tsk Task) error {
-	return a.db.Create(&tsk).Error
+func (a *Access) CreateTask(tsk Task) (Task, error) {
+
+	err := a.db.Create(&tsk).Error
+	if err != nil {
+		return Task{}, err
+	}
+	return tsk, nil
+
 }
 
 func (a *Access) GetTask(userId, f, t int) ([]Task, error) {
@@ -56,6 +61,5 @@ func (a *Access) GetTask(userId, f, t int) ([]Task, error) {
 		fmt.Println("couldn't read from db")
 		return []Task{}, err
 	}
-
 	return query, nil
 }

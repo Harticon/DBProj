@@ -1,12 +1,14 @@
 package DBproj
 
-import "github.com/jinzhu/gorm"
+import (
+	"github.com/jinzhu/gorm"
+)
 
 type User struct {
 	gorm.Model
 	Firstname string `json:"firstname"`
 	Lastname  string `json:"lastname"`
-	Email     string `json:"email" gorm:"unique_index;not null"`
+	Email     string `json:"email" gorm:"unique_index;not null" valid:"email"`
 	Password  string `json:"password" gorm:"not null"`
 }
 

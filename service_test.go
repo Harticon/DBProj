@@ -2,7 +2,6 @@ package DBproj
 
 import (
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/labstack/echo"
@@ -43,7 +42,7 @@ func (s *serviceSuite) SetupSuite() {
 		Firstname: "vojta",
 		Lastname:  "hromadka",
 		Email:     "hromadkavojta@gmail.com",
-		Password:  "DfZmTUg5mGgzQATsDXlLv5c2gH9+kuNvjIaq9MyuxkU=",
+		Password:  "FFzYvp0k/SauKztyP1WRoP1x4/BhiSKyuvfch2uW6q0=",
 	}
 
 	err = s.db.Create(&user).Error
@@ -61,38 +60,13 @@ func (s *serviceSuite) TearDownTest() {
 
 func (s *serviceSuite) TearDownSuite() {
 
-	s.db.DropTable(&User{})
-	s.db.DropTable(&Task{})
+	s.db.DropTable(&User{}, &Task{})
 	err := s.db.Close()
 	s.Nil(err)
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-func (s *serviceSuite) getToken() string {
-	user := &User{
-		Email:    "hromadkavojta@gmail.com",
-		Password: "vojta",
-	}
-
-	body, _ := json.Marshal(&user)
-	reqs := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(string(body)))
-	reqs.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	recs := httptest.NewRecorder()
-	c := s.echo.NewContext(reqs, recs)
-
-	err := s.service.SignIn(c)
-	s.Nil(err)
-
-	var t Token
-
-	err = json.Unmarshal(recs.Body.Bytes(), &t)
-	s.Nil(err)
-
-	return t.Token
-
-}
-
 //----------------------------------------------------------------------------------------------------------------------
 
 func TestApiSuite(t *testing.T) {
@@ -110,7 +84,7 @@ func (s *serviceSuite) TestSignUp() {
 				Firstname: "vojta",
 				Lastname:  "hromadka",
 				Email:     "lolololololol@gmail.com",
-				Password:  "vojta",
+				Password:  "cokoliv",
 			},
 			expectedCode: http.StatusCreated,
 			expectedErr:  nil,
@@ -192,6 +166,7 @@ func (s *serviceSuite) TestSetTask() {
 		Task         *Task
 		expectedCode int
 		expectedErr  error
+		id           int
 	}{
 		{
 			Task: &Task{
@@ -200,6 +175,7 @@ func (s *serviceSuite) TestSetTask() {
 			},
 			expectedCode: http.StatusCreated,
 			expectedErr:  nil,
+			id:           0,
 		},
 		{
 			Task: &Task{
@@ -208,27 +184,20 @@ func (s *serviceSuite) TestSetTask() {
 			},
 			expectedCode: http.StatusCreated,
 			expectedErr:  nil,
+			id:           0,
 		},
 	}
 
-	token := s.getToken()
-
 	for i, candidate := range candidates {
 
-		body, err := json.Marshal(&candidate.Task)
+		body, err := json.Marshal(candidate.Task)
 		req := httptest.NewRequest(http.MethodPost, "/task/create", strings.NewReader(string(body)))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
 		rec := httptest.NewRecorder()
 		ctx := s.echo.NewContext(req, rec)
 
-		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-			return []byte("secret"), nil
-		})
-		s.Nil(err)
-
-		claims, _ := t.Claims.(jwt.MapClaims)
-		ctx.Set("id", int(claims["id"].(float64)))
+		ctx.Set("id", candidate.id)
 
 		err = s.service.SetTask(ctx)
 		s.Nil(err)
@@ -245,34 +214,37 @@ func (s *serviceSuite) TestGetTaskByUserId() {
 		paramsVal    []string
 		expectedCode int
 		expectedErr  error
+		id           int
 	}{
 		{
 			params:       []string{"from", "to"},
 			paramsVal:    []string{"0", "250"},
 			expectedCode: http.StatusOK,
 			expectedErr:  nil,
+			id:           0,
 		},
 		{
 			params:       []string{"from", "to"},
 			paramsVal:    []string{"0aw", "250"},
 			expectedCode: http.StatusBadRequest,
 			expectedErr:  nil,
+			id:           0,
 		},
 		{
 			params:       []string{"from", "to"},
 			paramsVal:    []string{"0", "0"},
 			expectedCode: http.StatusOK,
 			expectedErr:  nil,
+			id:           0,
 		},
 		{
 			params:       []string{"fromneco", "to"},
 			paramsVal:    []string{"0", "250"},
 			expectedCode: http.StatusBadRequest,
 			expectedErr:  nil,
+			id:           0,
 		},
 	}
-
-	token := s.getToken()
 
 	for i, candidate := range candidates {
 
@@ -282,19 +254,12 @@ func (s *serviceSuite) TestGetTaskByUserId() {
 
 		req := httptest.NewRequest(http.MethodGet, "/?"+f.Encode(), nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
-		req.Header.Set(echo.HeaderAuthorization, token)
 		rec := httptest.NewRecorder()
 		ctx := s.echo.NewContext(req, rec)
 
-		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-			return []byte("secret"), nil
-		})
-		s.Nil(err)
+		ctx.Set("id", candidate.id)
 
-		claims, _ := t.Claims.(jwt.MapClaims)
-		ctx.Set("id", int(claims["id"].(float64)))
-
-		err = s.service.GetTaskByUserId(ctx)
+		err := s.service.GetTaskByUserId(ctx)
 		s.Nil(err)
 		s.Equalf(candidate.expectedCode, rec.Code, "\n candidate: %d\n", i+1)
 

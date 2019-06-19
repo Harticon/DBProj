@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/asaskevich/govalidator"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/spf13/viper"
 	"golang.org/x/crypto/scrypt"
 	"strconv"
 	"time"
 
 	"github.com/labstack/echo"
 	"net/http"
-	"regexp"
 )
 
 type Service struct {
@@ -24,11 +25,6 @@ func NewService(access IAccesser) *Service {
 	}
 }
 
-func validateEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
-	return re.MatchString(email)
-}
-
 func (s *Service) SignUp(ctx echo.Context) error {
 
 	var usr User
@@ -39,12 +35,11 @@ func (s *Service) SignUp(ctx echo.Context) error {
 	}
 
 	if usr.Email == "" || usr.Password == "" {
-		return ctx.JSON(http.StatusBadRequest, errors.New("empty password and email"))
+		return ctx.JSON(http.StatusBadRequest, errors.New("empty password or email"))
 	}
 
-	//Validate email
-	if !validateEmail(usr.Email) {
-		fmt.Println("email not valid")
+	_, err = govalidator.ValidateStruct(usr)
+	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
@@ -53,12 +48,12 @@ func (s *Service) SignUp(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	err = s.access.CreateUser(usr)
+	RetUsr, err := s.access.CreateUser(usr)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, nil)
+	return ctx.JSON(http.StatusCreated, RetUsr)
 }
 
 func (s *Service) SignIn(ctx echo.Context) error {
@@ -72,6 +67,11 @@ func (s *Service) SignIn(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
+	_, err = govalidator.ValidateStruct(usr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+
 	usr.Password, err = hashPassword(usr.Password)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
@@ -79,11 +79,9 @@ func (s *Service) SignIn(ctx echo.Context) error {
 
 	query, err := s.access.GetUser(usr)
 	if err != nil {
-		//fmt.Println("error: ", err)
+		fmt.Println("error: ", err)
 		return ctx.JSON(http.StatusBadRequest, err.Error())
 	}
-
-	//create token
 
 	token := jwt.New(jwt.SigningMethodHS256)
 
@@ -93,7 +91,7 @@ func (s *Service) SignIn(ctx echo.Context) error {
 	claims["id"] = query.ID
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
-	t, err := token.SignedString([]byte("secret"))
+	t, err := token.SignedString([]byte(viper.GetString("secret")))
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
@@ -115,15 +113,15 @@ func (s *Service) SetTask(ctx echo.Context) error {
 	var ok bool
 	tsk.UserId, ok = ctx.Get("id").(int)
 	if !ok {
-		return ctx.JSON(http.StatusUnauthorized, err)
+		return ctx.JSON(http.StatusUnauthorized, errors.New("couldnt resolve user"))
 	}
 
-	err = s.access.CreateTask(tsk)
+	task, err := s.access.CreateTask(tsk)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, err)
+	return ctx.JSON(http.StatusCreated, task)
 }
 
 func (s *Service) GetTaskByUserId(ctx echo.Context) error {
@@ -131,17 +129,22 @@ func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 	from := ctx.QueryParam("from")
 	to := ctx.QueryParam("to")
 
-	f, ok := strconv.Atoi(from)
-	if ok != nil {
-		return ctx.JSON(http.StatusBadRequest, ok)
+	f, err := strconv.Atoi(from)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	t, ok := strconv.Atoi(to)
-	if ok != nil {
-		return ctx.JSON(http.StatusBadRequest, ok)
+	t, err := strconv.Atoi(to)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
-	result, err := s.access.GetTask(ctx.Get("id").(int), f, t)
+	userId, ok := ctx.Get("id").(int)
+	if !ok {
+		return ctx.JSON(http.StatusUnauthorized, errors.New("couldnt resolve user"))
+	}
+
+	result, err := s.access.GetTask(userId, f, t)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
@@ -150,7 +153,8 @@ func (s *Service) GetTaskByUserId(ctx echo.Context) error {
 }
 
 func hashPassword(raw string) (string, error) {
-	dk, err := scrypt.Key([]byte(raw), []byte("salt&pepper"), 16384, 8, 1, 32)
+
+	dk, err := scrypt.Key([]byte(raw), []byte(viper.GetString("hashSecret")), 16384, 8, 1, 32)
 	if err != nil {
 		return "", err
 	}

@@ -33,8 +33,8 @@ func (s *serviceSuite) SetupSuite() {
 
 	db.AutoMigrate(&User{}, &Task{})
 
-	access := NewAccess(db)
-	s.service = NewService(access)
+	//access := NewAccess(db)
+	s.service = NewService(NewAccessMock())
 	s.echo = echo.New()
 	s.db = db
 

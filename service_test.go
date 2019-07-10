@@ -24,7 +24,7 @@ type serviceSuite struct {
 
 func (s *serviceSuite) SetupSuite() {
 
-	viper.SetDefault("db.conn", "test.db")
+	viper.SetDefault("db.conn", "host=db-svc user=goo dbname=goo sslmode=disable password=goo port=5432")
 
 	db, err := gorm.Open("sqlite3", viper.GetString("db.conn"))
 	if err != nil {

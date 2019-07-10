@@ -1,0 +1,31 @@
+version: '2'
+
+services:
+  db-svc:
+    image: postgres:9.5
+    container_name: db-svc
+    networks:
+      - dev
+    ports:
+      - 9999:5432
+    environment:
+      - POSTGRES_USER=goo
+      - POSTGRES_PASSWORD=goo
+      - POSTGRES_DB=goo
+
+  usr-svc:
+    build: .
+    image: dbproj
+    networks:
+      - dev
+    ports:
+      - 8080:80
+    depends_on:
+      - db-svc
+    restart: always
+
+networks:
+  dev:
+
+
+

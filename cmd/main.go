@@ -5,6 +5,7 @@ import (
 	"github.com/Harticon/DBproj"
 	"github.com/asaskevich/govalidator"
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -85,11 +86,11 @@ func main() {
 
 	//defer profile.Start().Stop()
 
-	viper.SetDefault("db.conn", "prod.db")
+	viper.SetDefault("db.conn", "host=db-svc user=goo dbname=goo sslmode=disable password=goo port=5432")
 	viper.SetDefault("secret", "secret")
 	viper.SetDefault("hashSecret", "salt&peper")
 
-	db, err := gorm.Open("sqlite3", viper.GetString("db.conn"))
+	db, err := gorm.Open("postgres", viper.GetString("db.conn"))
 	if err != nil {
 		panic("failed to connect to database	")
 	}
@@ -112,6 +113,6 @@ func main() {
 	tg.POST("/create", service.SetTask)
 	tg.GET("/get", service.GetTaskByUserId)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(":80"))
 
 }

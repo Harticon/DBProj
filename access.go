@@ -17,7 +17,7 @@ func NewAccess(db *gorm.DB) *Access {
 
 type IAccesser interface {
 	CreateUser(usr User) (User, error)
-	GetUser(usr User) (User, error)
+	GetUser(email, password string) (User, error)
 	CreateTask(tsk Task) (Task, error)
 	GetTask(userId, f, t int) ([]Task, error)
 }
@@ -33,10 +33,10 @@ func (a *Access) CreateUser(usr User) (User, error) {
 	return usr, nil
 }
 
-func (a *Access) GetUser(usr User) (User, error) {
+func (a *Access) GetUser(email, password string) (User, error) {
 	var query User
 
-	err := a.db.Where("email = ? AND password = ?", usr.Email, usr.Password).Find(&query).Error
+	err := a.db.Where("email = ? AND password = ?", email, password).Find(&query).Error
 	if err != nil {
 		//fmt.Println("err:", err)
 		return User{}, err

@@ -64,7 +64,7 @@ func main() {
 
 		if c.NArg() > 0 {
 			name = c.Args().Get(0)
-			fmt.Printf("---------------------------%s\n",name)
+			fmt.Printf("---------------------------%s\n", name)
 		} else if c.String("lang") == "spanish" {
 			fmt.Println("Hola", name)
 		} else if c.String("lang") == "czech" {
@@ -73,7 +73,6 @@ func main() {
 			fmt.Println("Hello", name)
 		}
 		return nil
-
 
 	}
 

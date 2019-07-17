@@ -13,16 +13,21 @@ services:
       - POSTGRES_PASSWORD=goo
       - POSTGRES_DB=goo
 
-  usr-svc:
-    build: .
-    image: dbproj
+  test:
+    image: flowup/godev
+    volumes:
+      - .:/go/src/github.com/Harticon/DBproj
+    working_dir: /go/src/github.com/Harticon/DBproj
     networks:
       - dev
     ports:
-      - 8080:80
+      - 8080:8080
     depends_on:
       - db-svc
     restart: always
+    command: goconvey -timeout 60s -host 0.0.0.0
+
+
 
 networks:
   dev:
